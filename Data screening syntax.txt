@@ -1,0 +1,130 @@
+* Encoding: UTF-8.
+
+* 0. Preliminary set-up
+* Import data from Excel....see video 1.1 for demo on how to do this.
+GET DATA
+  /TYPE=XLSX
+  /FILE='... File directory... \Sample data.xlsx'
+  /SHEET=name 'Data screening required'
+  /CELLRANGE=FULL
+  /READNAMES=ON
+  /DATATYPEMIN PERCENTAGE=95.0
+  /HIDDEN IGNORE=YES.
+EXECUTE.
+DATASET NAME DataSet1 WINDOW=FRONT.
+
+* Assign labels to the values.
+VALUE LABELS Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30
+1 'Strongly agree' 2 'Agree' 3 'Neither' 4 'Disagree' 5 'Strongly disagree'
+
+* 1. ISOLATING PARTICIPANTS WITH TOO MANY MISSING RESPONSES.
+* Calculate proportion of missing values.
+COMPUTE Missing=NMISS(Q1,Q2,Q3,Q4,Q5,Q6,Q7,Q8,Q9,Q10,Q11,Q12,Q13,Q14,Q15,Q16,Q17,Q18,Q19,Q20,
+    Q21,Q22,Q23,Q24,Q25,Q26,Q27,Q28,Q29,Q30)/30*100.
+EXECUTE.
+
+* Select participants with missing responses < 10%.
+USE ALL.
+COMPUTE filter_$=(Missing < 10).
+VARIABLE LABELS filter_$ 'Missing < 10 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+* 2. UNEGAGED RESPONDENTS.
+COMPUTE SD=SD(Q1,Q2,Q3,Q4,Q5,Q6,Q7,Q8,Q9,Q10,Q11,Q12,Q13,Q14,Q15,Q16,Q17,Q18,Q19,Q20,
+    Q21,Q22,Q23,Q24,Q25,Q26,Q27,Q28,Q29,Q30).
+EXECUTE.
+
+* Update select cases.
+USE ALL.
+COMPUTE filter_$=(Missing < 10  &  SD >0.5).
+VARIABLE LABELS filter_$ 'Missing < 10  &  SD >0.5 (FILTER)'.
+VALUE LABELS filter_$ 0 'Not Selected' 1 'Selected'.
+FORMATS filter_$ (f1.0).
+FILTER BY filter_$.
+EXECUTE.
+
+* Remove participants that will not be included in future analysis.
+FILTER OFF.
+USE ALL.
+SELECT IF (Missing<10 & SD > 0.5).
+EXECUTE.
+
+
+* 3. IMPUTE FOR MISSING VALUES.
+* Check missing values first.
+* Split by group.
+SORT CASES  BY Group.
+SPLIT FILE LAYERED BY Group.
+
+* frequency of missing values.
+FREQUENCIES VARIABLES=Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 
+    Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30
+  /FORMAT=NOTABLE
+  /STATISTICS=MEDIAN
+  /ORDER=ANALYSIS.
+
+* Replace missing values by the median.
+RMV /Q1_1=MEDIAN(Q1 ALL) /Q2_1=MEDIAN(Q2 ALL) /Q3_1=MEDIAN(Q3 ALL) /Q4_1=MEDIAN(Q4 ALL) 
+    /Q5_1=MEDIAN(Q5 ALL) /Q6_1=MEDIAN(Q6 ALL) /Q7_1=MEDIAN(Q7 ALL) /Q8_1=MEDIAN(Q8 ALL) /Q9_1=MEDIAN(Q9 
+    ALL) /Q10_1=MEDIAN(Q10 ALL) /Q11_1=MEDIAN(Q11 ALL) /Q12_1=MEDIAN(Q12 ALL) /Q13_1=MEDIAN(Q13 ALL) 
+    /Q14_1=MEDIAN(Q14 ALL) /Q15_1=MEDIAN(Q15 ALL) /Q16_1=MEDIAN(Q16 ALL) /Q17_1=MEDIAN(Q17 ALL) 
+    /Q18_1=MEDIAN(Q18 ALL) /Q19_1=MEDIAN(Q19 ALL) /Q20_1=MEDIAN(Q20 ALL) /Q21_1=MEDIAN(Q21 ALL) 
+    /Q22_1=MEDIAN(Q22 ALL) /Q23_1=MEDIAN(Q23 ALL) /Q24_1=MEDIAN(Q24 ALL) /Q25_1=MEDIAN(Q25 ALL) 
+    /Q26_1=MEDIAN(Q26 ALL) /Q27_1=MEDIAN(Q27 ALL) /Q28_1=MEDIAN(Q28 ALL) /Q29_1=MEDIAN(Q29 ALL) 
+    /Q30_1=MEDIAN(Q30 ALL).
+
+* Check new measurements.
+FREQUENCIES VARIABLES=Q1_1 Q2_1 Q3_1 Q4_1 Q5_1 Q6_1 Q7_1 Q8_1 Q9_1 Q10_1 Q11_1 Q12_1 Q13_1 Q14_1 
+    Q15_1 Q16_1 Q17_1 Q18_1 Q19_1 Q20_1 Q21_1 Q22_1 Q23_1 Q24_1 Q25_1 Q26_1 Q27_1 Q28_1 Q29_1 Q30_1
+  /FORMAT=NOTABLE
+  /STATISTICS=MEDIAN
+  /ORDER=ANALYSIS.
+
+* 4. FORMATTING NEW DATASET.
+* Delete old variables.
+DELETE VARIABLES Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 
+    Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30 Missing filter_$ SD
+    
+* Rename new variables.
+RENAME VARIABLES(Q1_1 Q2_1 Q3_1 Q4_1 Q5_1 Q6_1 Q7_1 Q8_1 Q9_1 Q10_1 Q11_1 Q12_1 Q13_1 Q14_1 Q15_1 Q16_1 Q17_1 Q18_1 
+Q19_1 Q20_1 Q21_1 Q22_1 Q23_1 Q24_1 Q25_1 Q26_1 Q27_1 Q28_1 Q29_1 Q30_1 = Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 
+    Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30).
+
+* retitle labels.
+VARIABLE LABELS Q1 ' ' Q2 ' ' Q3 ' '  Q4 ' '  Q5 ' '  Q6 ' '  Q7 ' '  Q8 ' '  Q9 ' '  Q10 ' '  Q11 ' '  Q12 ' '  Q13 ' '  Q14 ' '  Q15 ' '  Q16 ' '  Q17 ' '  Q18 ' '  Q19 ' '  Q20 ' '  Q21 ' '  
+    Q22 ' '  Q23 ' '  Q24 ' '  Q25 ' '  Q26 ' '  Q27 ' '  Q28 ' '  Q29 ' '  Q30 ' ' 
+
+* updating levels of measurement.
+VARIABLE LEVEL  Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 
+    Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30 (Ordinal)
+    
+* Assign labels to the values.
+VALUE LABELS Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30
+1 'Strongly agree' 2 'Agree' 3 'Neither' 4 'Disagree' 5 'Strongly disagree'
+
+* change decimal places to 0.
+FORMATS Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18 Q19 Q20 Q21 Q22 Q23 Q24 Q25 Q26 Q27 Q28 Q29 Q30 (f8.0)
+
+* 5. REORDERING MEASUREMENTS.
+* Check original.
+* first unsplit the file.
+SPLIT FILE OFF.
+FREQUENCIES VARIABLES=Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18
+  /ORDER=ANALYSIS.
+
+* Rorder the negative worded questions.
+* Download extension https://www.spss-tutorials.com/spss-recode-values-with-value-labels/.
+SPSS_TUTORIALS_CHANGE_CATEGORY_ORDER VARIABLES = "Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18" OLDVALUES 
+    = "1 2 3 4 5" NEWVALUES = "5 4 3 2 1".
+
+* Check result.
+FREQUENCIES VARIABLES=Q9 Q10 Q11 Q12 Q13 Q14 Q15 Q16 Q17 Q18
+  /ORDER=ANALYSIS.
+
+* save new dataset ready for FA.
+SAVE OUTFILE='... File directory... \Data for FA.sav'
+  /COMPRESSED.
+
